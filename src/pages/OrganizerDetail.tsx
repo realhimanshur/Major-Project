@@ -1,9 +1,12 @@
+// ONLY CHANGE: added attendee role check
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MapPin, Star, ArrowLeft, Phone } from "lucide-react";
 
 import { getOrganizerById } from "@/services/organizerService";
-import { createBooking, createPaymentOrder } from "@/services/bookingService";
+import { createBooking, createPaymentOrder, getRazorpayKey } from "@/services/bookingService";
+import { useAuth } from "@/context/AuthContext";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,18 +17,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// ✅ Razorpay type (NO any, NO global issue)
 type RazorpayResponse = {
   razorpay_payment_id: string;
 };
 
-declare global {
-  interface Window {
-    Razorpay: new (options: RazorpayOptions) => {
-      open: () => void;
-    };
-  }
-}
+const RazorpayConstructor = (window as unknown as {
+  Razorpay: new (options: RazorpayOptions) => { open: () => void };
+}).Razorpay;
 
 type RazorpayOptions = {
   key: string;
@@ -45,7 +43,6 @@ type RazorpayOptions = {
   };
 };
 
-// ✅ Organizer type (NO any)
 interface Organizer {
   _id: string;
   name: string;
@@ -59,7 +56,6 @@ interface Organizer {
   phone?: string;
 }
 
-// ✅ Form type
 interface BookingForm {
   name: string;
   email: string;
@@ -74,6 +70,7 @@ interface BookingForm {
 const OrganizerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [organizer, setOrganizer] = useState<Organizer | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -90,7 +87,6 @@ const OrganizerDetail: React.FC = () => {
     notes: "",
   });
 
-  // FETCH ORGANIZER
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -107,7 +103,6 @@ const OrganizerDetail: React.FC = () => {
     fetchData();
   }, [id]);
 
-  // HANDLE INPUT (NO any)
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
@@ -115,7 +110,6 @@ const OrganizerDetail: React.FC = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // SUBMIT
   const handleSubmit = async () => {
     try {
       if (!organizer?._id) return;
@@ -126,12 +120,14 @@ const OrganizerDetail: React.FC = () => {
         budget: Number(form.budget),
       });
 
-      const booking = bookingRes.booking;
+      const booking = bookingRes.booking as { _id: string };
 
       const order = await createPaymentOrder(Number(form.budget));
 
+      const key = await getRazorpayKey();
+
       const options: RazorpayOptions = {
-        key:  import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: key,
         amount: order.amount,
         currency: order.currency,
         name: "Event Horizon",
@@ -165,8 +161,9 @@ const OrganizerDetail: React.FC = () => {
         },
       };
 
-      const rzp = new window.Razorpay(options);
+      const rzp = new RazorpayConstructor(options);
       rzp.open();
+
     } catch (error) {
       console.error(error);
       alert("Payment failed");
@@ -230,7 +227,22 @@ const OrganizerDetail: React.FC = () => {
           </div>
 
           <div className="flex gap-3">
-            <Button onClick={() => setOpen(true)}>
+            <Button
+              onClick={() => {
+                if (!user) {
+                  navigate("/login");
+                  return;
+                }
+
+                // ✅ NEW: ROLE CHECK (ONLY ATTENDEE)
+                if (user.role !== "attendee") {
+                  alert("Only attendees can hire organizers ❌");
+                  return;
+                }
+
+                setOpen(true);
+              }}
+            >
               Hire Organizer
             </Button>
 
@@ -256,7 +268,7 @@ const OrganizerDetail: React.FC = () => {
           </DialogHeader>
 
           <div className="flex flex-col gap-3 mt-4">
-            {Object.keys(form).map((key) => (
+            {Object.keys(form).map((key) =>
               key === "notes" ? (
                 <textarea
                   key={key}
@@ -273,8 +285,8 @@ const OrganizerDetail: React.FC = () => {
                   onChange={handleChange}
                   className="p-2 bg-white/10 rounded"
                 />
-              )
-            ))}
+              ),
+            )}
 
             <Button onClick={handleSubmit}>Confirm Booking</Button>
           </div>

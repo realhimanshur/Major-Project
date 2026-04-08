@@ -10,12 +10,28 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-const CreateEvent = () => {
+// ✅ FORM TYPE (UI ONLY)
+interface FormDataType {
+  title: string;
+  description: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  price: string;
+  capacity: string;
+  category: string;
+  ageGroup: string;
+  visibility: "public" | "private";
+  accessCode: string;
+  image: string;
+}
+
+const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
 
-  const [formData, setFormData] = useState<any>({
+  const [formData, setFormData] = useState<FormDataType>({
     title: "",
     description: "",
     location: "",
@@ -30,24 +46,46 @@ const CreateEvent = () => {
     image: "",
   });
 
+  // 🔥 FETCH EVENT (EDIT MODE)
   useEffect(() => {
-    if (isEdit) {
-      getEventById(id!).then((data) => {
+    if (isEdit && id) {
+      getEventById(id).then((data) => {
+        const d = data;
+
         setFormData({
-          ...data,
-          price: data.price || "",
-          capacity: data.capacity || "",
+          title: d.title || "",
+          description: d.description || "",
+          location: d.location || "",
+          startDate: d.startDate || "",
+          endDate: d.endDate || "",
+          price: String(d.price ?? ""),
+          capacity: String(d.capacity ?? ""),
+          category: d.category || "",
+
+          ageGroup: (d as unknown as { ageGroup?: string }).ageGroup || "all",
+          visibility:
+            (d as unknown as { visibility?: "public" | "private" })
+              .visibility || "public",
+          accessCode:
+            (d as unknown as { accessCode?: string }).accessCode || "",
+
+          image: d.image || "",
         });
       });
     }
-  }, [id]);
+  }, [id, isEdit]);
 
-  const handleChange = (e: any) => {
+  // 🔥 HANDLE CHANGE
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ): void => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  /* 🔥 VALIDATION */
-  const validate = () => {
+  // 🔥 VALIDATION
+  const validate = (): boolean => {
     if (
       !formData.title ||
       !formData.description ||
@@ -70,32 +108,56 @@ const CreateEvent = () => {
     return true;
   };
 
-  const handleSubmit = async (e: any) => {
+  // 🔥 MAP FORM → API PAYLOAD
+  const mapToPayload = (): Record<string, unknown> => {
+    return {
+      title: formData.title,
+      description: formData.description,
+      location: formData.location,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      price: Number(formData.price),
+      capacity: Number(formData.capacity),
+      category: formData.category,
+      image: formData.image,
+      ageGroup: formData.ageGroup,
+      visibility: formData.visibility,
+      accessCode: formData.accessCode,
+    };
+  };
+
+  // 🔥 SUBMIT
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     e.preventDefault();
 
     if (!validate()) return;
 
     try {
       let res;
+      const payload = mapToPayload();
 
-      if (isEdit) {
-        res = await updateEvent(id!, formData);
+      if (isEdit && id) {
+        res = await updateEvent(id, payload as never);
       } else {
-        res = await createEvent(formData);
+        res = await createEvent(payload as never);
       }
 
       console.log("API RESPONSE:", res);
 
-      if (!res || res.message) {
-        throw new Error(res?.message || "Something failed");
-      }
-
       alert(isEdit ? "Event Updated ✅" : "Event Created 🚀");
 
-      navigate("/organizer");
-    } catch (err: any) {
+      // 🔥 REFRESH DASHBOARD
+      navigate("/organizer", { state: { refresh: true } });
+    } catch (err: unknown) {
       console.error(err);
-      alert("Error: " + err.message);
+
+      if (err instanceof Error) {
+        alert("Error: " + err.message);
+      } else {
+        alert("Something went wrong ❌");
+      }
     }
   };
 
@@ -116,21 +178,18 @@ const CreateEvent = () => {
                 value={formData.title}
                 onChange={handleChange}
               />
-
               <Textarea
                 name="description"
                 placeholder="Description *"
                 value={formData.description}
                 onChange={handleChange}
               />
-
               <Input
                 name="location"
                 placeholder="Location *"
                 value={formData.location}
                 onChange={handleChange}
               />
-
               <Input
                 name="image"
                 placeholder="Image URL (optional)"
@@ -146,7 +205,6 @@ const CreateEvent = () => {
                 value={formData.startDate?.slice(0, 16)}
                 onChange={handleChange}
               />
-
               <Input
                 type="datetime-local"
                 name="endDate"
@@ -159,33 +217,26 @@ const CreateEvent = () => {
           {/* RIGHT */}
           <div className="space-y-6">
             <div className="glass-card p-6 rounded-xl space-y-4">
-              {/* PRICE */}
               <Input
                 name="price"
                 placeholder="Price *"
                 value={formData.price}
-                onFocus={(e) => e.target.value === "0" && (e.target.value = "")}
                 onChange={handleChange}
               />
-
-              {/* CAPACITY */}
               <Input
                 name="capacity"
                 placeholder="Capacity *"
                 value={formData.capacity}
-                onFocus={(e) => e.target.value === "0" && (e.target.value = "")}
                 onChange={handleChange}
               />
 
-              {/* CATEGORY */}
               <select
-                className="w-full bg-[#111] border border-white/10 rounded-md p-2 text-white"
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
+                className="w-full bg-[#111] border border-white/10 rounded-md p-2 text-white"
               >
                 <option value="">Select Category *</option>
-
                 <option value="music">Music</option>
                 <option value="business">Business</option>
                 <option value="wellness">Wellness</option>
@@ -196,18 +247,16 @@ const CreateEvent = () => {
                 <option value="social">Social</option>
               </select>
 
-              {/* VISIBILITY */}
               <select
-                className="w-full bg-[#111] border border-white/10 rounded-md p-2 text-white"
                 name="visibility"
                 value={formData.visibility}
                 onChange={handleChange}
+                className="w-full bg-[#111] border border-white/10 rounded-md p-2 text-white"
               >
                 <option value="public">Public</option>
                 <option value="private">Private</option>
               </select>
 
-              {/* ACCESS CODE */}
               {formData.visibility === "private" && (
                 <Input
                   name="accessCode"

@@ -33,7 +33,7 @@ exports.createBooking = async (req, res) => {
       location,
       budget,
       notes,
-      paymentStatus: "pending", // ✅ added
+      paymentStatus: "pending",
     });
 
     res.status(201).json({
@@ -51,6 +51,10 @@ exports.createPaymentOrder = async (req, res) => {
   try {
     const { amount } = req.body;
 
+    if (!amount) {
+      return res.status(400).json({ message: "Amount is required" });
+    }
+
     const options = {
       amount: amount * 100,
       currency: "INR",
@@ -66,7 +70,14 @@ exports.createPaymentOrder = async (req, res) => {
   }
 };
 
-// 🔥 VERIFY PAYMENT (SECURE)
+// SEND RAZORPAY KEY TO FRONTEND (ADD THIS)
+exports.getRazorpayKey = (req, res) => {
+  res.status(200).json({
+    key: process.env.RAZORPAY_KEY_ID,
+  });
+};
+
+//VERIFY PAYMENT (SECURE)
 exports.verifyPayment = async (req, res) => {
   try {
     const {
@@ -109,7 +120,7 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
-// ✅ GET ALL BOOKINGS
+// ✅ GET ALL BOOKINGS (ADMIN / TEST)
 exports.getBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -119,6 +130,23 @@ exports.getBookings = async (req, res) => {
     res.json(bookings);
   } catch (error) {
     console.error("Get Bookings Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 🔥 NEW: GET MY BOOKINGS (ATTENDEE DASHBOARD FIX)
+exports.getMyBookings = async (req, res) => {
+  try {
+    // ⚠️ Currently returning all bookings (no auth yet)
+    // Later: filter by req.user._id
+
+    const bookings = await Booking.find()
+      .populate("organizer", "name image location")
+      .sort({ createdAt: -1 });
+
+    res.json(bookings); // ✅ MUST be array
+  } catch (error) {
+    console.error("Get My Bookings Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

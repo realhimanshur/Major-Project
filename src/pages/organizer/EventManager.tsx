@@ -1,58 +1,59 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import axios from "axios";
+import { getEventById } from "@/services/eventService";
+import type { Event } from "@/types";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
+// ✅ Strong type for attendees (adjust later if backend differs)
+interface Attendee {
+  _id: string;
+  name: string;
+  email: string;
+}
 
 const EventManager: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
 
-  const { id } = useParams();
-  const [event, setEvent] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  const [attendees, setAttendees] = useState<any[]>([]);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
 
   useEffect(() => {
-
-    const fetchEvent = async () => {
-
+    const fetchEvent = async (): Promise<void> => {
       try {
+        if (!id) return;
 
-        const token = localStorage.getItem("token");
+        const data = await getEventById(id);
 
-        const res = await axios.get(
-          `http://localhost:5000/api/events/my-events`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
+        setEvent(data);
+
+        // ✅ Safe attendee extraction
+        if (data && typeof data === "object" && "attendees" in data) {
+          const possibleAttendees = (data as { attendees?: unknown }).attendees;
+
+          if (Array.isArray(possibleAttendees)) {
+            const formatted: Attendee[] = possibleAttendees.map((a) => ({
+              _id: (a as Attendee)._id || crypto.randomUUID(),
+              name: (a as Attendee).name || "Unknown",
+              email: (a as Attendee).email || "No email",
+            }));
+
+            setAttendees(formatted);
           }
-        );
-
-        const found = res.data.find((e: any) => e._id === id);
-        setEvent(found);
-
-      } catch (err) {
-
-        console.error(err);
-
+        }
+      } catch (error: unknown) {
+        console.error("Error fetching event:", error);
       } finally {
-
         setLoading(false);
-
       }
-
     };
 
     fetchEvent();
-
   }, [id]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
-        Loading event manager...
+        Loading...
       </div>
     );
   }
@@ -65,181 +66,56 @@ const EventManager: React.FC = () => {
     );
   }
 
-  const revenue = (event.price || 0) * (event.registered || 0);
-
   return (
+    <div className="min-h-screen bg-[#111] pt-24 pb-16 px-4">
+      <div className="max-w-4xl mx-auto text-white">
 
-    <div className="min-h-screen bg-[#161616] pt-24 pb-16">
-
-      <div className="max-w-6xl mx-auto px-4">
-
-        {/* HEADER */}
-
+        {/* EVENT INFO */}
         <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-3">{event.title}</h1>
 
-          <h1 className="text-3xl font-bold text-white mb-2">
-            {event.title}
-          </h1>
-
-          <p className="text-white/60">
-            Manage your event
+          <p className="text-white/70 mb-2">
+            📍 {event.location}
           </p>
 
+          <p className="text-white/70 mb-2">
+            📅{" "}
+            {event.startDate
+              ? new Date(event.startDate).toLocaleString()
+              : "Date not available"}
+          </p>
+
+          <p className="text-white/80 mt-4">
+            {event.description || "No description"}
+          </p>
         </div>
 
-        {/* TABS */}
+        {/* ATTENDEES */}
+        <div className="glass-card p-6 rounded-xl">
+          <h2 className="text-xl font-semibold mb-4">
+            Attendees ({attendees.length})
+          </h2>
 
-        <Tabs defaultValue="overview">
-
-          <TabsList className="bg-white/5 mb-6">
-
-            <TabsTrigger value="overview">
-              Overview
-            </TabsTrigger>
-
-            <TabsTrigger value="attendees">
-              Attendees
-            </TabsTrigger>
-
-            <TabsTrigger value="analytics">
-              Analytics
-            </TabsTrigger>
-
-            <TabsTrigger value="settings">
-              Settings
-            </TabsTrigger>
-
-          </TabsList>
-
-          {/* OVERVIEW */}
-
-          <TabsContent value="overview">
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-              <div className="glass-card p-6 rounded-xl text-white">
-
-                <p className="text-3xl font-bold">
-                  {event.registered || 0}
-                </p>
-
-                <p className="text-white/60">
-                  Total Attendees
-                </p>
-
-              </div>
-
-              <div className="glass-card p-6 rounded-xl text-white">
-
-                <p className="text-3xl font-bold">
-                  ₹{revenue}
-                </p>
-
-                <p className="text-white/60">
-                  Revenue
-                </p>
-
-              </div>
-
-              <div className="glass-card p-6 rounded-xl text-white">
-
-                <p className="text-3xl font-bold">
-                  {event.capacity}
-                </p>
-
-                <p className="text-white/60">
-                  Capacity
-                </p>
-
-              </div>
-
+          {attendees.length === 0 ? (
+            <p className="text-white/50">No attendees yet</p>
+          ) : (
+            <div className="space-y-2">
+              {attendees.map((attendee) => (
+                <div
+                  key={attendee._id}
+                  className="p-3 bg-white/5 rounded-lg flex justify-between"
+                >
+                  <span>{attendee.name}</span>
+                  <span className="text-white/50">{attendee.email}</span>
+                </div>
+              ))}
             </div>
-
-          </TabsContent>
-
-          {/* ATTENDEES */}
-
-          <TabsContent value="attendees">
-
-            <div className="glass-card p-6 rounded-xl text-white">
-
-              <h2 className="text-xl font-semibold mb-4">
-                Attendees
-              </h2>
-
-              <p className="text-white/60">
-                Attendee list will appear here.
-              </p>
-
-              <Button className="mt-4">
-                Export CSV
-              </Button>
-
-            </div>
-
-          </TabsContent>
-
-          {/* ANALYTICS */}
-
-          <TabsContent value="analytics">
-
-            <div className="glass-card p-6 rounded-xl text-white">
-
-              <h2 className="text-xl font-semibold mb-4">
-                Analytics
-              </h2>
-
-              <p className="text-white/60">
-                Event analytics charts will appear here.
-              </p>
-
-            </div>
-
-          </TabsContent>
-
-          {/* SETTINGS */}
-
-          <TabsContent value="settings">
-  <div className="glass-card p-6 rounded-xl text-white space-y-4">
-
-    <h2 className="text-xl font-semibold">Event Settings</h2>
-
-    <Button
-      onClick={() => window.location.href = `/organizer/edit/${event._id}`}
-    >
-      Edit Event
-    </Button>
-
-    <Button
-      variant="destructive"
-      onClick={async () => {
-        if (confirm("Delete this event?")) {
-          await fetch(`http://localhost:5000/api/events/${event._id}`, {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-          });
-
-          alert("Event Deleted");
-          window.location.href = "/organizer";
-        }
-      }}
-    >
-      Delete Event
-    </Button>
-
-  </div>
-</TabsContent>
-
-        </Tabs>
+          )}
+        </div>
 
       </div>
-
     </div>
-
   );
-
 };
 
 export default EventManager;

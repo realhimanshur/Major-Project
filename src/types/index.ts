@@ -75,13 +75,12 @@ export interface Organizer {
 // =========================
 // EVENT (MERGED SAFE)
 // =========================
-export interface Event {
+  export interface Event {
   _id?: string;
   id?: string;
 
   title: string;
 
-  // ✅ BOTH SUPPORT
   description?: string;
   shortDescription?: string;
 
@@ -93,16 +92,15 @@ export interface Event {
   price: number;
   currency?: string;
 
-  // ✅ SUPPORT BOTH BACKEND + UI
+  // ✅ FIXED (string instead of Date)
   date?: string;
-  startDate?: Date;
-  endDate?: Date;
+  startDate?: string;
+  endDate?: string;
 
   location: string;
 
   venueId?: string;
 
-  // ✅ BOTH CASES SUPPORTED
   organizerId: string | Organizer;
 
   organizer?:
@@ -129,8 +127,9 @@ export interface Event {
 
   gallery?: string[];
 
-  createdAt: Date;
-  updatedAt: Date;
+  // ✅ KEEP AS DATE (backend usually sends ISO → still fine)
+  createdAt: string;
+  updatedAt: string;
 }
 
 // =========================

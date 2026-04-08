@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   createVenue,
   getVenues,
+  getVenueById,
 } = require("../controllers/venueController");
 
 // ✅ CREATE VENUE
@@ -12,8 +13,7 @@ router.post("/create", createVenue);
 // ✅ GET ALL VENUES
 router.get("/", getVenues);
 
-module.exports = router;
-
-const { getVenueById } = require("../controllers/venueController");
-
+// ✅ GET SINGLE VENUE
 router.get("/:id", getVenueById);
+
+module.exports = router;

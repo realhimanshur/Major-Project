@@ -1,6 +1,5 @@
 const Venue = require("../models/Venue");
 
-
 // ✅ CREATE VENUE
 exports.createVenue = async (req, res) => {
   try {
@@ -9,9 +8,11 @@ exports.createVenue = async (req, res) => {
       description,
       location,
       pricePerHour,
+      price,
       capacity,
       amenities,
       image,
+      images,
       category,
     } = req.body;
 
@@ -19,11 +20,15 @@ exports.createVenue = async (req, res) => {
       name,
       description,
       location,
-      pricePerHour,
+
+      // ✅ FIX: support both
+      price: price || pricePerHour || 0,
+
       capacity,
-      amenities,
-      image,
       category,
+
+      // ✅ FIX: normalize images
+      images: images || (image ? [image] : []),
     });
 
     await venue.save();
@@ -41,7 +46,6 @@ exports.createVenue = async (req, res) => {
     });
   }
 };
-
 
 // ✅ GET ALL VENUES
 exports.getVenues = async (req, res) => {
@@ -65,7 +69,7 @@ exports.getVenues = async (req, res) => {
 // ✅ GET SINGLE VENUE
 exports.getVenueById = async (req, res) => {
   try {
-    const venue = await require("../models/Venue").findById(req.params.id);
+    const venue = await Venue.findById(req.params.id);
 
     if (!venue) {
       return res.status(404).json({

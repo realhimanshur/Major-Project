@@ -26,12 +26,13 @@ const eventRoutes = require("./routes/eventRoutes");
 const organizerRoutes = require("./routes/organizerRoutes");
 const venueRoutes = require("./routes/venueRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
-
+const favoriteRoutes = require("./routes/favoriteRoutes");
 
 app.use("/api/ai", aiAgentRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/organizers", organizerRoutes);
+app.use("/api/favorites", favoriteRoutes);
 app.use("/api/venues", venueRoutes);
 app.use("/api/bookings", bookingRoutes);
 

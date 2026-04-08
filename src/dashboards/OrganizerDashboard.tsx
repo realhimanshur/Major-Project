@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getMyEvents } from "@/services/eventService";
 import {
   Calendar,
@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import ProfileForm from "@/pages/organizer/ProfileForm"; // ✅ ADDED
+import ProfileForm from "@/pages/organizer/ProfileForm";
 
 import {
   DropdownMenu,
@@ -38,23 +38,27 @@ interface EventType {
 
 const OrganizerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ ADDED
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<string>("events");
   const [events, setEvents] = useState<EventType[]>([]);
 
-  
-
+  // ✅ UPDATED useEffect (refetch on navigation state change)
   useEffect(() => {
-    const fetchEventsData = async () => {
-      const data = await getMyEvents();
-      setEvents(data as EventType[]);
+    const fetchEventsData = async (): Promise<void> => {
+      try {
+        const data = await getMyEvents();
+        setEvents(data as EventType[]);
+      } catch (error: unknown) {
+        console.error("Fetch events error:", error);
+      }
     };
 
     fetchEventsData();
-  }, []);
+  }, [location.state]); // ✅ KEY FIX
 
-  const handleDelete = async (eventId: string) => {
+  const handleDelete = async (eventId: string): Promise<void> => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this event?",
     );
@@ -88,8 +92,14 @@ const OrganizerDashboard: React.FC = () => {
     0,
   );
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
+  // ✅ FIXED DATE HANDLING
+  const formatDate = (date: string): string => {
+    if (!date) return "Date not available";
+
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "Invalid Date";
+
+    return d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -285,7 +295,6 @@ const OrganizerDashboard: React.FC = () => {
             </div>
           </TabsContent>
 
-          {/* ✅ FIXED PROFILE TAB */}
           <TabsContent value="profile">
             <ProfileForm />
           </TabsContent>

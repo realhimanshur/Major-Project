@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-
+const { getRazorpayKey } = require("../controllers/bookingController");
 const bookingController = require("../controllers/bookingController");
 
 // ✅ ADD THIS FIRST (VERY IMPORTANT)
@@ -21,6 +21,7 @@ router.get("/my-bookings", async (req, res) => {
 // ✅ EXISTING ROUTES
 router.post("/", bookingController.createBooking);
 router.get("/", bookingController.getBookings);
+router.get("/razorpay-key", getRazorpayKey);
 router.get("/:id", bookingController.getBookingById);
 router.put("/:id/payment", bookingController.updatePaymentStatus);
 router.post("/create-order", bookingController.createPaymentOrder);

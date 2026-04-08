@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, MapPin, Users, Star, Ticket } from "lucide-react";
+import { Calendar, MapPin } from "lucide-react";
 import type { Event } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,39 +10,51 @@ interface EventCardProps {
   variant?: "default" | "compact" | "featured";
 }
 
+// ✅ SAFE EXTENDED TYPE (NO any)
+interface AdaptedEvent extends Event {
+  id: string;
+  date?: string;
+  price: number;
+  location: string;
+}
+
 const EventCard: React.FC<EventCardProps> = ({
   event,
   variant = "default",
 }) => {
   const navigate = useNavigate();
 
-  // ✅ SAFE BACKEND ADAPT (added, not replacing anything)
-  const adaptedEvent = {
+  // ✅ CLEAN SAFE ADAPTATION
+  const adaptedEvent: AdaptedEvent = {
     ...event,
-    id: (event as any)._id || event.id,
+    id: event._id || event.id || "",
     price: event.price ?? 0,
-    date: (event as any).date || event.startDate,
+    date: event.date || event.startDate,
     location: event.location || "Unknown Location",
   };
 
-  // ✅ Organizer (merged both logics)
+  // ✅ CLEAN ORGANIZER LOGIC (NO any)
   const organizer =
-    typeof (event as any).organizer === "object"
-      ? (event as any).organizer?.name || "Organizer"
+    typeof event.organizer === "object"
+      ? event.organizer?.name || "Organizer"
       : typeof event.organizerId === "object"
-      ? event.organizerId?.name
-      : (event as any).organizerName || "Organizer";
+      ? event.organizerId?.name || "Organizer"
+      : event.organizerName || "Organizer";
 
-  const formatDate = (date: any) => {
+  const formatDate = (date?: string): string => {
     if (!date) return "Invalid Date";
-    return new Date(date).toLocaleDateString("en-US", {
+
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "Invalid Date";
+
+    return d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
     });
   };
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = (category?: string): string => {
     const colors: Record<string, string> = {
       music: "bg-[#ff2d53]/20 text-[#ff2d53]",
       business: "bg-[#1da1f2]/20 text-[#1da1f2]",
@@ -54,7 +66,8 @@ const EventCard: React.FC<EventCardProps> = ({
       social: "bg-[#ff6f00]/20 text-[#ff6f00]",
       other: "bg-white/10 text-white/60",
     };
-    return colors[category] || colors.other;
+
+    return colors[category || "other"] || colors.other;
   };
 
   const image =
@@ -73,7 +86,7 @@ const EventCard: React.FC<EventCardProps> = ({
           <img src={image} alt={event.title} className="w-full h-full object-cover" />
 
           <div className="absolute top-3 left-3">
-            <Badge className={`${getCategoryColor(event.category || "other")} border-0`}>
+            <Badge className={`${getCategoryColor(event.category)} border-0`}>
               {event.category}
             </Badge>
           </div>
