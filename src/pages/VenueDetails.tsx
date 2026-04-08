@@ -3,13 +3,68 @@ import { useParams } from "react-router-dom";
 import { MapPin, Users, Star, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { createPaymentOrder } from "@/services/bookingService";
+
+// ✅ Razorpay typing
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => {
+      open(): void;
+    };
+  }
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+  }) => void;
+  prefill?: {
+    name?: string;
+    email?: string;
+  };
+  theme?: {
+    color?: string;
+  };
+}
 
 const VenueDetails: React.FC = () => {
   const { id } = useParams();
-  const [venue, setVenue] = useState<any>(null);
+
+  type VenueType = {
+    name: string;
+    image: string;
+    description: string;
+    pricePerHour: number;
+    rating: number;
+    reviewsCount: number;
+    amenities: string[];
+    location:
+      | string
+      | {
+          city?: string;
+          state?: string;
+        };
+    capacity?: {
+      min?: number;
+      max?: number;
+    };
+    contactInfo?: {
+      phone?: string;
+    };
+  };
+
+  const [venue, setVenue] = useState<VenueType | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ FETCH SINGLE VENUE
+  // ✅ FETCH VENUE
   useEffect(() => {
     const fetchVenue = async () => {
       try {
@@ -26,15 +81,72 @@ const VenueDetails: React.FC = () => {
     if (id) fetchVenue();
   }, [id]);
 
+  // 🔥 BOOKING FUNCTION (NEW)
+  const handleBooking = async () => {
+    try {
+      console.log("Venue booking clicked");
+
+      if (!venue?.pricePerHour) {
+        alert("Invalid price");
+        return;
+      }
+
+      // ✅ Create order
+      const data = await createPaymentOrder(Number(venue.pricePerHour));
+
+      console.log("Order:", data);
+
+      if (!data || !data.id) {
+        alert("Order creation failed");
+        return;
+      }
+
+      // ✅ Razorpay options
+      const options: RazorpayOptions = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: data.amount,
+        currency: "INR",
+        name: "Event Horizon",
+        description: venue.name,
+        order_id: data.id,
+        handler: function (response) {
+          console.log("Payment Success:", response);
+          alert("Payment Successful ✅");
+        },
+        prefill: {
+          name: "User",
+          email: "user@example.com",
+        },
+        theme: {
+          color: "#633dc0",
+        },
+      };
+
+      // ✅ Razorpay check
+      if (!window.Razorpay) {
+        alert("Razorpay SDK not loaded");
+        return;
+      }
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error("Booking error:", error);
+      alert("Payment Failed ❌");
+    }
+  };
+
+  // LOADING
   if (loading) {
     return <p className="text-white p-10">Loading...</p>;
   }
 
+  // NOT FOUND
   if (!venue) {
     return <p className="text-white p-10">Venue not found</p>;
   }
 
-  // ✅ ADAPT DATA (same logic as card)
+  // ✅ LOCATION FORMAT
   const location =
     typeof venue.location === "string"
       ? venue.location
@@ -43,7 +155,6 @@ const VenueDetails: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0b0b0f] text-white pt-24 pb-16 px-6">
       <div className="max-w-5xl mx-auto">
-
         {/* IMAGE */}
         <div className="rounded-xl overflow-hidden mb-6">
           <img
@@ -84,10 +195,7 @@ const VenueDetails: React.FC = () => {
           <h2 className="text-lg font-semibold mb-2">Amenities</h2>
           <div className="flex flex-wrap gap-2">
             {venue.amenities?.map((a: string) => (
-              <span
-                key={a}
-                className="bg-white/10 px-3 py-1 rounded text-sm"
-              >
+              <span key={a} className="bg-white/10 px-3 py-1 rounded text-sm">
                 {a}
               </span>
             ))}
@@ -96,7 +204,13 @@ const VenueDetails: React.FC = () => {
 
         {/* CTA */}
         <div className="flex gap-4">
-          <Button className="btn-primary">Book Now</Button>
+          <Button
+            onClick={handleBooking}
+            className="bg-[#633dc0] hover:bg-[#4f2fa8]"
+          >
+            Book Now
+          </Button>
+
           <Button
             variant="outline"
             onClick={() => {

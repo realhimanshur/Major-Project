@@ -14,18 +14,72 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+// ✅ Razorpay type (NO any, NO global issue)
+type RazorpayResponse = {
+  razorpay_payment_id: string;
+};
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => {
+      open: () => void;
+    };
+  }
+}
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayResponse) => void;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+  theme: {
+    color: string;
+  };
+};
+
+// ✅ Organizer type (NO any)
+interface Organizer {
+  _id: string;
+  name: string;
+  image: string;
+  location: string;
+  rating: number;
+  reviews: number;
+  price: number;
+  description: string;
+  specialties: string[];
+  phone?: string;
+}
+
+// ✅ Form type
+interface BookingForm {
+  name: string;
+  email: string;
+  phone: string;
+  eventType: string;
+  eventDate: string;
+  location: string;
+  budget: string;
+  notes: string;
+}
+
 const OrganizerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [organizer, setOrganizer] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [organizer, setOrganizer] = useState<Organizer | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [open, setOpen] = useState<boolean>(false);
 
-  // 🔥 MODAL STATE
-  const [open, setOpen] = useState(false);
-
-  // 🔥 FORM STATE
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<BookingForm>({
     name: "",
     email: "",
     phone: "",
@@ -53,17 +107,19 @@ const OrganizerDetail: React.FC = () => {
     fetchData();
   }, [id]);
 
-  // HANDLE INPUT
-  const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  // HANDLE INPUT (NO any)
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // SUBMIT FORM
+  // SUBMIT
   const handleSubmit = async () => {
     try {
       if (!organizer?._id) return;
 
-      // 1️⃣ Create booking first
       const bookingRes = await createBooking({
         organizerId: organizer._id,
         ...form,
@@ -72,20 +128,17 @@ const OrganizerDetail: React.FC = () => {
 
       const booking = bookingRes.booking;
 
-      // 2️⃣ Create Razorpay order
       const order = await createPaymentOrder(Number(form.budget));
 
-      // 3️⃣ Razorpay options
-      const options = {
-        key: "YOUR_RAZORPAY_KEY_ID", // 🔥 replace this
+      const options: RazorpayOptions = {
+        key:  import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
         currency: order.currency,
         name: "Event Horizon",
         description: "Organizer Booking Payment",
         order_id: order.id,
 
-        handler: async function (response: any) {
-          // 4️⃣ Update payment in backend
+        handler: async (response: RazorpayResponse) => {
           await fetch(
             `http://localhost:5000/api/bookings/${booking._id}/payment`,
             {
@@ -112,7 +165,7 @@ const OrganizerDetail: React.FC = () => {
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (error) {
       console.error(error);
@@ -133,7 +186,6 @@ const OrganizerDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#161616] pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4">
-        {/* BACK */}
         <button
           onClick={() => navigate(-1)}
           className="text-white mb-4 flex items-center gap-2"
@@ -141,7 +193,6 @@ const OrganizerDetail: React.FC = () => {
           <ArrowLeft /> Back
         </button>
 
-        {/* IMAGE */}
         <div className="rounded-2xl overflow-hidden mb-6">
           <img
             src={organizer.image}
@@ -150,7 +201,6 @@ const OrganizerDetail: React.FC = () => {
           />
         </div>
 
-        {/* DETAILS */}
         <div className="text-white">
           <h1 className="text-3xl font-bold mb-2">{organizer.name}</h1>
 
@@ -168,11 +218,10 @@ const OrganizerDetail: React.FC = () => {
 
           <p className="text-white/70 mb-6">{organizer.description}</p>
 
-          {/* SPECIALTIES */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-2">Specialties</h3>
             <div className="flex flex-wrap gap-2">
-              {organizer.specialties?.map((item: string) => (
+              {organizer.specialties?.map((item) => (
                 <Badge key={item} className="bg-white/10 text-white border-0">
                   {item}
                 </Badge>
@@ -180,18 +229,13 @@ const OrganizerDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* BUTTONS */}
           <div className="flex gap-3">
-            <Button
-              className="bg-[#633dc0] hover:bg-[#4f2fa8]"
-              onClick={() => setOpen(true)}
-            >
+            <Button onClick={() => setOpen(true)}>
               Hire Organizer
             </Button>
 
             <Button
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10"
               onClick={() => {
                 if (organizer.phone) {
                   window.location.href = `tel:${organizer.phone}`;
@@ -205,7 +249,6 @@ const OrganizerDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* 🔥 BOOKING MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-[#1e1e1e] text-white">
           <DialogHeader>
@@ -213,54 +256,25 @@ const OrganizerDetail: React.FC = () => {
           </DialogHeader>
 
           <div className="flex flex-col gap-3 mt-4">
-            <input
-              name="name"
-              placeholder="Your Name"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
-            <input
-              name="email"
-              placeholder="Email"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
-            <input
-              name="phone"
-              placeholder="Phone"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
-            <input
-              name="eventType"
-              placeholder="Event Type"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
-            <input
-              type="date"
-              name="eventDate"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
-            <input
-              name="location"
-              placeholder="Event Location"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
-            <input
-              name="budget"
-              placeholder="Budget"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
-            <textarea
-              name="notes"
-              placeholder="Notes (optional)"
-              onChange={handleChange}
-              className="p-2 bg-white/10 rounded"
-            />
+            {Object.keys(form).map((key) => (
+              key === "notes" ? (
+                <textarea
+                  key={key}
+                  name={key}
+                  placeholder="Notes (optional)"
+                  onChange={handleChange}
+                  className="p-2 bg-white/10 rounded"
+                />
+              ) : (
+                <input
+                  key={key}
+                  name={key}
+                  placeholder={key}
+                  onChange={handleChange}
+                  className="p-2 bg-white/10 rounded"
+                />
+              )
+            ))}
 
             <Button onClick={handleSubmit}>Confirm Booking</Button>
           </div>

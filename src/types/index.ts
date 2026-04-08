@@ -7,11 +7,15 @@ export interface User {
   id: string;
   email: string;
   name: string;
+
   role: UserRole;
   avatar?: string;
   phone?: string;
+  organization?: string;
+  bio?: string;
   createdAt: Date;
   updatedAt: Date;
+  image?: string;
 }
 
 // =========================
@@ -30,11 +34,7 @@ export type EventCategory =
 
 export type EventType = "free" | "paid";
 
-export type EventStatus =
-  | "upcoming"
-  | "ongoing"
-  | "completed"
-  | "cancelled";
+export type EventStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
 
 // =========================
 // ORGANIZER
@@ -105,10 +105,12 @@ export interface Event {
   // ✅ BOTH CASES SUPPORTED
   organizerId: string | Organizer;
 
-  organizer?: {
-    _id: string;
-    name?: string;
-  } | string;
+  organizer?:
+    | {
+        _id: string;
+        name?: string;
+      }
+    | string;
 
   organizerName?: string;
   organizerAvatar?: string;

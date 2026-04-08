@@ -1,6 +1,7 @@
 const aiService = require("../services/aiService");
 const ChatHistory = require("../models/ChatHistory");
-const mongoose = require("mongoose"); // ✅ move here
+const mongoose = require("mongoose");
+const cloudinary = require("../config/cloudinary"); // ✅ ADD
 
 // 🧠 Chat handler
 const chat = async (req, res) => {
@@ -13,13 +14,11 @@ const chat = async (req, res) => {
       });
     }
 
-    // ✅ SAFE USER ID
     const safeUserId =
       userId && mongoose.Types.ObjectId.isValid(userId)
         ? new mongoose.Types.ObjectId(userId)
         : null;
 
-    // ✅ STRICT ISOLATION (USER + SESSION)
     const query = safeUserId
       ? { userId: safeUserId, sessionId }
       : { sessionId };
@@ -165,9 +164,32 @@ const clearHistory = async (req, res) => {
   }
 };
 
+// 🔥 NEW: IMAGE UPLOAD (Cloudinary)
+const uploadImage = async (req, res) => {
+  try {
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ message: "No image provided" });
+    }
+
+    const uploaded = await cloudinary.uploader.upload(image, {
+      folder: "event-horizon/profile",
+    });
+
+    res.json({
+      imageUrl: uploaded.secure_url,
+    });
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    res.status(500).json({ message: "Image upload failed" });
+  }
+};
+
 module.exports = {
   chat,
   getChatHistory,
   getUserChatHistory,
   clearHistory,
+  uploadImage, // ✅ ADD
 };

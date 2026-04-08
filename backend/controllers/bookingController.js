@@ -1,6 +1,7 @@
 const Booking = require("../models/Booking");
 const Organizer = require("../models/Organizer");
 const razorpay = require("../config/razorpay");
+const crypto = require("crypto");
 
 // ✅ CREATE BOOKING
 exports.createBooking = async (req, res) => {
@@ -17,13 +18,11 @@ exports.createBooking = async (req, res) => {
       notes,
     } = req.body;
 
-    // 🔍 check organizer exists
     const organizer = await Organizer.findById(organizerId);
     if (!organizer) {
       return res.status(404).json({ message: "Organizer not found" });
     }
 
-    // 💾 create booking
     const booking = await Booking.create({
       organizer: organizerId,
       name,
@@ -34,6 +33,7 @@ exports.createBooking = async (req, res) => {
       location,
       budget,
       notes,
+      paymentStatus: "pending", // ✅ added
     });
 
     res.status(201).json({
@@ -46,15 +46,13 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-
-
 // ✅ CREATE RAZORPAY ORDER
 exports.createPaymentOrder = async (req, res) => {
   try {
     const { amount } = req.body;
 
     const options = {
-      amount: amount * 100, // ₹ to paise
+      amount: amount * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
     };
@@ -68,7 +66,50 @@ exports.createPaymentOrder = async (req, res) => {
   }
 };
 
-// ✅ GET ALL BOOKINGS (ADMIN / TEST)
+// 🔥 VERIFY PAYMENT (SECURE)
+exports.verifyPayment = async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      bookingId,
+    } = req.body;
+
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: "Invalid payment ❌" });
+    }
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    booking.paymentStatus = "paid";
+    booking.paymentId = razorpay_payment_id;
+    booking.status = "confirmed";
+
+    await booking.save();
+
+    res.json({
+      message: "Payment verified & booking confirmed ✅",
+      booking,
+    });
+  } catch (error) {
+    console.error("Verify Payment Error:", error);
+    res.status(500).json({ message: "Verification failed" });
+  }
+};
+
+// ✅ GET ALL BOOKINGS
 exports.getBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -101,7 +142,7 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-// ✅ UPDATE PAYMENT STATUS (for Razorpay later)
+// ⚠️ KEEP (OPTIONAL OLD METHOD)
 exports.updatePaymentStatus = async (req, res) => {
   try {
     const { paymentId } = req.body;

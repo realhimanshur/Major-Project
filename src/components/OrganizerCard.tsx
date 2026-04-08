@@ -1,33 +1,53 @@
+import { useNavigate } from "react-router-dom";
+import { Star} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
-import { useNavigate } from 'react-router-dom';
-import { Star, MapPin, Calendar, Users, CheckCircle2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+type Organizer = {
+  _id: string; // 🔥 backend uses _id, not id
+  name: string;
+  email: string;
+  phone?: string;
 
+  image?: string;
+  description?: string;
+
+  eventsCount?: number;
+  rating?: number;
+  reviews?: number;
+
+  specialties?: string[];
+
+  price?: number;
+  location?: string;
+};
 interface OrganizerCardProps {
-  organizer: any;
-  variant?: 'default' | 'compact' | 'featured';
+  organizer: Organizer;
+  variant?: "default" | "compact" | "featured";
 }
 
-const OrganizerCard: React.FC<OrganizerCardProps> = ({ organizer, variant = 'default' }) => {
+const OrganizerCard: React.FC<OrganizerCardProps> = ({
+  organizer,
+  variant = "default",
+}) => {
   const navigate = useNavigate();
 
   const getSpecialtyColor = (specialty: string) => {
     const colors: Record<string, string> = {
-      business: 'bg-[#1da1f2]/20 text-[#1da1f2]',
-      food: 'bg-[#ff6f00]/20 text-[#ff6f00]',
-      social: 'bg-[#ff6f00]/20 text-[#ff6f00]',
-      wedding: 'bg-[#c385ff]/20 text-[#c385ff]',
-      other: 'bg-white/10 text-white/60',
+      business: "bg-[#1da1f2]/20 text-[#1da1f2]",
+      food: "bg-[#ff6f00]/20 text-[#ff6f00]",
+      social: "bg-[#ff6f00]/20 text-[#ff6f00]",
+      wedding: "bg-[#c385ff]/20 text-[#c385ff]",
+      other: "bg-white/10 text-white/60",
     };
     return colors[specialty] || colors.other;
   };
 
-  const safeNumber = (num: any) => {
-    return num ? Number(num).toLocaleString() : "0";
+  const safeNumber = (num?: number): string => {
+    return num ? num.toLocaleString() : "0";
   };
 
-  if (variant === 'compact') {
+  if (variant === "compact") {
     return (
       <div
         onClick={() => navigate(`/organizers/${organizer._id}`)}
@@ -44,7 +64,9 @@ const OrganizerCard: React.FC<OrganizerCardProps> = ({ organizer, variant = 'def
             <div className="flex items-center gap-2 mt-1">
               <Star className="w-4 h-4 text-yellow-400 fill-current" />
               <span className="text-white/80 text-sm">{organizer.rating}</span>
-              <span className="text-white/40 text-sm">({organizer.reviews})</span>
+              <span className="text-white/40 text-sm">
+                ({organizer.reviews})
+              </span>
             </div>
             <div className="text-white/50 text-sm mt-1">
               {organizer.location}
@@ -55,7 +77,7 @@ const OrganizerCard: React.FC<OrganizerCardProps> = ({ organizer, variant = 'def
     );
   }
 
-  if (variant === 'featured') {
+  if (variant === "featured") {
     return (
       <div
         onClick={() => navigate(`/organizers/${organizer._id}`)}
@@ -68,7 +90,9 @@ const OrganizerCard: React.FC<OrganizerCardProps> = ({ organizer, variant = 'def
             className="w-24 h-24 rounded-full mx-auto"
           />
 
-          <h3 className="text-xl text-white text-center mt-3">{organizer.name}</h3>
+          <h3 className="text-xl text-white text-center mt-3">
+            {organizer.name}
+          </h3>
 
           <div className="text-center text-white/60 text-sm">
             {organizer.description}
@@ -90,7 +114,7 @@ const OrganizerCard: React.FC<OrganizerCardProps> = ({ organizer, variant = 'def
             className="w-full mt-4"
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/organizers/${organizer._id}/book`);
+              navigate(`/organizers/${organizer._id}`);
             }}
           >
             Book Now
@@ -121,15 +145,11 @@ const OrganizerCard: React.FC<OrganizerCardProps> = ({ organizer, variant = 'def
             <span className="text-white/40">({organizer.reviews})</span>
           </div>
 
-          <div className="text-white/50 text-sm mt-1">
-            {organizer.location}
-          </div>
+          <div className="text-white/50 text-sm mt-1">{organizer.location}</div>
         </div>
       </div>
 
-      <p className="text-white/60 mt-3">
-        {organizer.description}
-      </p>
+      <p className="text-white/60 mt-3">{organizer.description}</p>
 
       <div className="flex gap-2 mt-3 flex-wrap">
         {organizer.specialties?.slice(0, 3).map((s: string) => (
@@ -140,17 +160,15 @@ const OrganizerCard: React.FC<OrganizerCardProps> = ({ organizer, variant = 'def
       </div>
 
       <div className="flex justify-between items-center mt-4">
-        <span className="text-white">
-          ₹{safeNumber(organizer.price)}
-        </span>
+        <span className="text-white">₹{safeNumber(organizer.price)}</span>
 
         <Button
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/organizers/${organizer._id}/book`);
+            navigate(`/organizers/${organizer._id}`);
           }}
         >
-          Book
+          View Details
         </Button>
       </div>
     </div>

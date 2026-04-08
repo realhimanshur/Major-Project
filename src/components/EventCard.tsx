@@ -167,7 +167,7 @@ const EventCard: React.FC<EventCardProps> = ({
               navigate(`/events/${adaptedEvent.id}`);
             }}
           >
-            Book Now
+            View Details
           </Button>
         </div>
       </div>

@@ -14,6 +14,18 @@ const organizerSchema = new mongoose.Schema(
       default: "https://via.placeholder.com/150",
     },
 
+    // ✅ ADD THIS
+    organization: {
+      type: String,
+      default: "",
+    },
+
+    // ✅ ADD THIS
+    bio: {
+      type: String,
+      default: "",
+    },
+
     description: String,
 
     location: String,

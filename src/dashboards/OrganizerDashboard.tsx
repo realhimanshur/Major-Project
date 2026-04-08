@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
- import { getMyEvents } from "@/services/eventService";
+import { getMyEvents } from "@/services/eventService";
 import {
   Calendar,
   Plus,
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
+import ProfileForm from "@/pages/organizer/ProfileForm"; // ✅ ADDED
 
 import {
   DropdownMenu,
@@ -24,41 +25,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface EventType {
+  _id: string;
+  title: string;
+  image?: string;
+  visibility?: "public" | "private";
+  startDate: string;
+  registered?: number;
+  capacity: number;
+  price?: number;
+}
+
 const OrganizerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState("events");
-  const [events, setEvents] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("events");
+  const [events, setEvents] = useState<EventType[]>([]);
 
-  const fetchEvents = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await axios.get(
-        "http://localhost:5000/api/events/my-events",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      setEvents(res.data);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-    }
-  };
-
- 
+  
 
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchEventsData = async () => {
       const data = await getMyEvents();
-      setEvents(data);
+      setEvents(data as EventType[]);
     };
 
-    fetchEvents();
+    fetchEventsData();
   }, []);
 
   const handleDelete = async (eventId: string) => {
@@ -79,7 +72,7 @@ const OrganizerDashboard: React.FC = () => {
       alert("Event deleted successfully ✅");
 
       setEvents((prev) => prev.filter((e) => e._id !== eventId));
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Delete error:", error);
       alert("Failed to delete event ❌");
     }
@@ -95,7 +88,7 @@ const OrganizerDashboard: React.FC = () => {
     0,
   );
 
-  const formatDate = (date: any) => {
+  const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -184,7 +177,6 @@ const OrganizerDashboard: React.FC = () => {
                             {event.title}
                           </h3>
 
-                          {/* ✅ VISIBILITY BADGE */}
                           {event.visibility === "private" ? (
                             <span className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 flex items-center gap-1">
                               <Lock className="w-3 h-3" />
@@ -272,7 +264,9 @@ const OrganizerDashboard: React.FC = () => {
                   No events yet
                 </h3>
 
-                <p className="text-white/60 mb-6">Create your first event</p>
+                <p className="text-white/60 mb-6">
+                  Create your first event
+                </p>
 
                 <Button
                   className="btn-primary"
@@ -291,10 +285,9 @@ const OrganizerDashboard: React.FC = () => {
             </div>
           </TabsContent>
 
+          {/* ✅ FIXED PROFILE TAB */}
           <TabsContent value="profile">
-            <div className="glass-card p-6 rounded-xl text-white">
-              Organizer profile settings
-            </div>
+            <ProfileForm />
           </TabsContent>
         </Tabs>
       </div>

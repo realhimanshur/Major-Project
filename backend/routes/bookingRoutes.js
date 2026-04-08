@@ -3,19 +3,27 @@ const router = express.Router();
 
 const bookingController = require("../controllers/bookingController");
 
-// ✅ CREATE BOOKING
+// ✅ ADD THIS FIRST (VERY IMPORTANT)
+router.get("/my-bookings", async (req, res) => {
+  try {
+    const bookings = await require("../models/Booking")
+      .find()
+      .populate("organizer", "name image location")
+      .sort({ createdAt: -1 });
+
+    res.json(bookings);
+  } catch (error) {
+    console.error("Get My Bookings Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ✅ EXISTING ROUTES
 router.post("/", bookingController.createBooking);
-
-// ✅ GET ALL BOOKINGS
 router.get("/", bookingController.getBookings);
-
-// ✅ GET SINGLE BOOKING
 router.get("/:id", bookingController.getBookingById);
-
-// ✅ UPDATE PAYMENT STATUS
 router.put("/:id/payment", bookingController.updatePaymentStatus);
-
-// ✅ CREATE PAYMENT ORDER
 router.post("/create-order", bookingController.createPaymentOrder);
+router.post("/verify-payment", bookingController.verifyPayment);
 
 module.exports = router;
