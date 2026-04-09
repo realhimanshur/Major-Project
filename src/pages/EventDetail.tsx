@@ -1,4 +1,4 @@
-// ONLY CHANGE: added DB-based favorites + share
+// ONLY CHANGE: added MapView integration (no other logic touched)
 
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -16,6 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import MapView from "@/components/ui/MapView"; // ✅ ADDED
 
 declare global {
   interface Window {
@@ -40,7 +41,7 @@ interface RazorpayOptions {
 interface EventType {
   _id?: string;
   title: string;
-  location: string;
+  location: string; // ⚠️ still string
   date?: string;
   startDate?: string;
   price?: number;
@@ -58,8 +59,6 @@ const EventDetail: React.FC = () => {
 
   const [event, setEvent] = useState<EventType | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // ❤️ DB favorite state
   const [isFav, setIsFav] = useState(false);
 
   useEffect(() => {
@@ -70,7 +69,6 @@ const EventDetail: React.FC = () => {
         const data = await getEventById(id);
         setEvent(data);
 
-        // ✅ LOAD FAVORITES FROM DB
         if (user) {
           const favs = await getFavorites();
           setIsFav(favs.some((f) => f._id === id));
@@ -100,7 +98,6 @@ const EventDetail: React.FC = () => {
     });
   };
 
-  // ❤️ TOGGLE FAVORITE (DB)
   const handleFavorite = async () => {
     try {
       if (!user) {
@@ -111,7 +108,6 @@ const EventDetail: React.FC = () => {
       if (!id) return;
 
       await toggleFavorite(id, "event");
-
       setIsFav((prev) => !prev);
     } catch (error) {
       console.error(error);
@@ -119,7 +115,6 @@ const EventDetail: React.FC = () => {
     }
   };
 
-  // 🔗 SHARE
   const handleShare = async () => {
     const url = window.location.href;
 
@@ -138,7 +133,6 @@ const EventDetail: React.FC = () => {
     }
   };
 
-  // 🎯 BOOKING
   const handleBooking = async (): Promise<void> => {
     if (!user) {
       navigate("/login");
@@ -190,6 +184,12 @@ const EventDetail: React.FC = () => {
     return <div className="text-white text-center mt-40">Event not found</div>;
   }
 
+  // ✅ CONVERT STRING → OBJECT FOR MAP
+  const mapLocation = {
+    city: event.location,
+    state: "",
+  };
+
   return (
     <div className="min-h-screen bg-[#161616] pt-20 pb-16">
       <div className="max-w-5xl mx-auto px-4">
@@ -211,7 +211,6 @@ const EventDetail: React.FC = () => {
           className="w-full h-[350px] object-cover"
         />
 
-        {/* ❤️ + 🔗 */}
         <div className="flex gap-4 mt-4 mb-6">
           <Button variant="outline" onClick={handleFavorite}>
             <Heart
@@ -231,10 +230,15 @@ const EventDetail: React.FC = () => {
         <div className="text-white">
           <h1 className="text-3xl font-bold mb-2">{event.title}</h1>
 
-          <p className="flex items-center gap-2 text-white/60 mb-2">
+          <p className="flex items-center gap-2 text-white/60 mb-4">
             <MapPin className="w-4 h-4" />
             {event.location}
           </p>
+
+          {/* ✅ MAP ADDED */}
+          <div className="mb-6">
+            <MapView location={mapLocation} />
+          </div>
 
           <p className="flex items-center gap-2 text-white/60 mb-4">
             <Calendar className="w-4 h-4" />

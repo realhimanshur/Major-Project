@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import MapView from "@/components/ui/MapView"; // ✅ ADDED
 import type { Venue } from "@/types";
 
 interface RazorpayOptions {
@@ -41,7 +42,6 @@ const VenueDetail: React.FC = () => {
         if (!id) return;
 
         const data = await getVenueById(id);
-
         setVenue(data);
 
         if (user) {
@@ -58,7 +58,6 @@ const VenueDetail: React.FC = () => {
     fetchData();
   }, [id, user]);
 
-  // ❤️ FAVORITE
   const toggleFavoriteHandler = async () => {
     if (!user) return navigate("/login");
     if (!id) return;
@@ -67,7 +66,6 @@ const VenueDetail: React.FC = () => {
     setIsFav((prev) => !prev);
   };
 
-  // 🔗 SHARE
   const handleShare = async () => {
     const url = window.location.href;
 
@@ -86,7 +84,6 @@ const VenueDetail: React.FC = () => {
     }
   };
 
-  // 💳 BOOKING
   const handleBooking = async () => {
     if (!user) return navigate("/login");
 
@@ -172,10 +169,17 @@ const VenueDetail: React.FC = () => {
         <div className="text-white">
           <h1 className="text-3xl font-bold mb-2">{venue.name}</h1>
 
-          <p className="flex items-center gap-2 text-white/60 mb-2">
+          <p className="flex items-center gap-2 text-white/60 mb-4">
             <MapPin className="w-4 h-4" />
             {locationValue}
           </p>
+
+          {/* ✅ MAP ADDED HERE */}
+          {venue.location && (
+            <div className="mb-6">
+              <MapView location={venue.location} />
+            </div>
+          )}
 
           <p className="flex items-center gap-2 text-white/60 mb-2">
             <Users className="w-4 h-4" />
