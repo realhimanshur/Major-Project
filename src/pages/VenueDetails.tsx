@@ -1,8 +1,6 @@
-// ✅ VenueDetail.tsx (FINAL FIXED — ORGANIZER ONLY BOOK + DATA FIX)
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MapPin, ArrowLeft, Heart, Share2 } from "lucide-react";
+import { MapPin, ArrowLeft, Heart, Share2, Users } from "lucide-react";
 
 import { getVenueById } from "@/services/venueService";
 import {
@@ -16,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import type { Venue } from "@/types";
 
 interface RazorpayOptions {
   key: string;
@@ -27,26 +26,12 @@ interface RazorpayOptions {
   handler: (response: unknown) => void;
 }
 
-// ✅ FIXED TYPE FOR VENUE
-interface VenueType {
-  _id?: string;
-  name?: string;
-  title?: string;
-  location?: string;
-  price?: number;
-  pricePerHour?: number;
-  category?: string;
-  description?: string;
-  image?: string;
-  images?: string[];
-}
-
 const VenueDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [venue, setVenue] = useState<VenueType | null>(null);
+  const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFav, setIsFav] = useState(false);
 
@@ -57,36 +42,7 @@ const VenueDetail: React.FC = () => {
 
         const data = await getVenueById(id);
 
-        const normalizedVenue = {
-          _id: data._id,
-
-          title: data.name,
-
-          // ✅ LOCATION FIX (handles object)
-          location:
-            typeof data.location === "object"
-              ? `${data.location?.city || ""}, ${data.location?.state || ""}`
-              : data.location || "Location not available",
-
-          // ✅ PRICE FIX (handles both)
-          price:
-            data.price !== undefined
-              ? data.price
-              : data.pricePerHour !== undefined
-                ? data.pricePerHour
-                : 0,
-
-          category: data.category || "Venue",
-
-          description: data.description || "No description available",
-
-          // ✅ IMAGE FIX (handles both)
-          image: data.image || data.images?.[0] || "",
-
-          images: data.images || (data.image ? [data.image] : []),
-        };
-
-        setVenue(normalizedVenue);
+        setVenue(data);
 
         if (user) {
           const favs = await getFavorites();
@@ -104,20 +60,11 @@ const VenueDetail: React.FC = () => {
 
   // ❤️ FAVORITE
   const toggleFavoriteHandler = async () => {
-    try {
-      if (!user) {
-        navigate("/login");
-        return;
-      }
+    if (!user) return navigate("/login");
+    if (!id) return;
 
-      if (!id) return;
-
-      await toggleFavorite(id,"venue");
-      setIsFav((prev) => !prev);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to update favorite");
-    }
+    await toggleFavorite(id, "venue");
+    setIsFav((prev) => !prev);
   };
 
   // 🔗 SHARE
@@ -127,7 +74,7 @@ const VenueDetail: React.FC = () => {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: venue?.title || venue?.name,
+          title: venue?.name,
           url,
         });
       } else {
@@ -139,48 +86,31 @@ const VenueDetail: React.FC = () => {
     }
   };
 
-  // 🎯 BOOKING (🔥 FIXED ROLE)
+  // 💳 BOOKING
   const handleBooking = async () => {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
+    if (!user) return navigate("/login");
 
-    // ✅ FIX: ONLY ORGANIZER
     if (user.role !== "organizer") {
       alert("Only organizers can book venues ❌");
       return;
     }
 
     try {
-      const price =
-        typeof venue?.price === "number" && venue.price > 0 ? venue.price : 100;
-
-      if (!price) {
-        alert("Invalid venue price");
-        return;
-      }
-
       const key = await getRazorpayKey();
-
-      const data = await createPaymentOrder(Number(price));
+      const data = await createPaymentOrder(venue?.pricePerHour || 100);
 
       const options: RazorpayOptions = {
         key,
         amount: data.amount,
         currency: "INR",
         name: "Event Horizon",
-        description: venue?.title || venue?.name || "Venue Booking",
+        description: venue?.name || "Venue Booking",
         order_id: data.id,
-        handler: function () {
-          alert("Payment Successful ✅");
-        },
+        handler: () => alert("Payment Successful ✅"),
       };
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      console.error(error);
+      new window.Razorpay(options).open();
+    } catch {
       alert("Payment Failed ❌");
     }
   };
@@ -192,6 +122,16 @@ const VenueDetail: React.FC = () => {
   if (!venue) {
     return <div className="text-white text-center mt-40">Venue not found</div>;
   }
+
+  const locationValue =
+    venue.location?.city || venue.location?.state
+      ? `${venue.location?.city || ""}, ${venue.location?.state || ""}`
+      : "Location not available";
+
+  const capacityValue =
+    typeof venue.capacity?.max === "number"
+      ? venue.capacity.max
+      : "N/A";
 
   return (
     <div className="min-h-screen bg-[#161616] pt-20 pb-16">
@@ -206,12 +146,8 @@ const VenueDetail: React.FC = () => {
 
         {/* IMAGE */}
         <img
-          src={
-            venue.image ||
-            venue.images?.[0] ||
-            "https://via.placeholder.com/800x400"
-          }
-          alt={venue.title || venue.name}
+          src={venue.images?.[0] || "https://via.placeholder.com/800x400"}
+          alt={venue.name}
           className="w-full h-[350px] object-cover"
         />
 
@@ -234,28 +170,29 @@ const VenueDetail: React.FC = () => {
 
         {/* DETAILS */}
         <div className="text-white">
-          <h1 className="text-3xl font-bold mb-2">
-            {venue.title || venue.name}
-          </h1>
+          <h1 className="text-3xl font-bold mb-2">{venue.name}</h1>
 
           <p className="flex items-center gap-2 text-white/60 mb-2">
             <MapPin className="w-4 h-4" />
-            {venue.location || "Location not available"}
+            {locationValue}
+          </p>
+
+          <p className="flex items-center gap-2 text-white/60 mb-2">
+            <Users className="w-4 h-4" />
+            Capacity: {capacityValue}
           </p>
 
           <h2 className="text-2xl font-semibold mb-4">
-            ₹{venue.price || venue.pricePerHour || "N/A"}
+            ₹{venue.pricePerHour || "N/A"}
           </h2>
 
           <div className="mb-4">
             <Badge className="bg-white/10 text-white border-0">
-              {venue.category || "Venue"}
+              {venue.category}
             </Badge>
           </div>
 
-          <p className="text-white/70 mb-6">
-            {venue.description || "No description available"}
-          </p>
+          <p className="text-white/70 mb-6">{venue.description}</p>
 
           <Button
             onClick={handleBooking}

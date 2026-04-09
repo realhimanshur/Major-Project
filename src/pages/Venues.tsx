@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Search, Filter, X, Building2 } from "lucide-react";
-
+import type { Venue } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -8,52 +8,70 @@ import VenueCard from "@/components/VenueCard";
 import { getVenues } from "@/services/venueService";
 
 const Venues: React.FC = () => {
-  const [venues, setVenues] = useState<any[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCapacity, setSelectedCapacity] = useState("all");
   const [selectedPriceRange, setSelectedPriceRange] = useState("all");
 
-  // ✅ FETCH FROM BACKEND
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await getVenues();
-        setVenues(data || []);
+        const res = await getVenues();
+        console.log("API RESPONSE:", res);
+        setVenues(res || []);
       } catch (err) {
         console.error(err);
+        setVenues([]);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
   const filteredVenues = useMemo(() => {
     return venues.filter((venue) => {
+      const locationValue = `${venue.location?.city || ""} ${venue.location?.state || ""}`.toLowerCase();
+
+      // 🔍 SEARCH
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
+
         if (
           !venue.name?.toLowerCase().includes(q) &&
-          !venue.location?.toLowerCase?.().includes(q) &&
-          !venue.location?.city?.toLowerCase?.().includes(q) &&
+          !locationValue.includes(q) &&
           !venue.category?.toLowerCase().includes(q)
-        )
+        ) {
           return false;
+        }
       }
 
+      // 👥 CAPACITY (use max)
       if (selectedCapacity !== "all") {
-        const cap = venue.capacity?.max;
+        const cap =
+          typeof venue.capacity?.max === "number"
+            ? venue.capacity.max
+            : 0;
+
         if (selectedCapacity === "small" && cap > 100) return false;
-        if (selectedCapacity === "medium" && (cap < 100 || cap > 500)) return false;
+        if (selectedCapacity === "medium" && (cap < 100 || cap > 500))
+          return false;
         if (selectedCapacity === "large" && cap < 500) return false;
       }
 
+      // 💰 PRICE (use pricePerHour)
       if (selectedPriceRange !== "all") {
-        const price = venue.pricePerHour;
+        const price =
+          typeof venue.pricePerHour === "number"
+            ? venue.pricePerHour
+            : 0;
+
         if (selectedPriceRange === "budget" && price > 200) return false;
-        if (selectedPriceRange === "standard" && (price < 200 || price > 500)) return false;
+        if (selectedPriceRange === "standard" && (price < 200 || price > 500))
+          return false;
         if (selectedPriceRange === "premium" && price < 500) return false;
       }
 
@@ -72,9 +90,7 @@ const Venues: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-[#0b0b0f] pt-24 pb-16 overflow-hidden">
-
       <div className="max-w-7xl mx-auto px-4 relative z-10">
-
         {/* HEADER */}
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-white mb-2">
@@ -100,11 +116,9 @@ const Venues: React.FC = () => {
         </div>
 
         <div className="flex gap-8">
-
           {/* SIDEBAR */}
           <div className="w-72 hidden lg:block">
             <div className="sticky top-24 rounded-2xl p-6 backdrop-blur-xl bg-white/5 border border-white/10">
-
               <h2 className="text-white font-semibold mb-6 flex items-center gap-2">
                 <Filter className="w-4 h-4" />
                 Filters
@@ -161,7 +175,6 @@ const Venues: React.FC = () => {
 
           {/* GRID */}
           <div className="flex-1">
-
             {!loading && (
               <p className="text-white/50 mb-6 text-sm">
                 {filteredVenues.length} venues found

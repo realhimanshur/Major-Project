@@ -6,18 +6,39 @@ const venueSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    // ✅ OLD FORMAT (OBJECT)
     location: {
-      type: String,
-      required: true,
+      city: {
+        type: String,
+        required: true,
+      },
+      state: {
+        type: String,
+        required: true,
+      },
     },
+
+    // ✅ OLD FORMAT (OBJECT)
     capacity: {
+      min: {
+        type: Number,
+      },
+      max: {
+        type: Number,
+      },
+    },
+
+    // ✅ OLD FORMAT
+    pricePerHour: {
       type: Number,
     },
-    price: {
-      type: Number,
-    },
+
     images: [String],
+
     description: String,
+
+    category: String,
   },
   { timestamps: true }
 );

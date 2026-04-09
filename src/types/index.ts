@@ -75,7 +75,7 @@ export interface Organizer {
 // =========================
 // EVENT (MERGED SAFE)
 // =========================
-  export interface Event {
+export interface Event {
   _id?: string;
   id?: string;
 
@@ -136,30 +136,40 @@ export interface Organizer {
 // VENUE
 // =========================
 export interface Venue {
-  id: string;
+  id?: string;
+  _id?: string;
+
   name: string;
-  description: string;
+  description?: string;
+
   images: string[];
-  location: string;
-  address: string;
-  capacity: {
+
+  // ✅ OLD FORMAT
+  location: {
+    city: string;
+    state: string;
+  };
+
+  // ✅ OLD FORMAT
+  capacity?: {
     min: number;
     max: number;
   };
-  amenities: string[];
-  pricePerHour: number;
-  currency: string;
-  rating: number;
-  reviewCount: number;
-  category: string;
-  isFeatured: boolean;
-  contactInfo: {
-    phone: string;
-    email: string;
+
+  // ✅ OLD FORMAT
+  pricePerHour?: number;
+
+  category?: string;
+  rating?: number;
+  reviewCount?: number;
+
+  contactInfo?: {
+    phone?: string;
+    email?: string;
   };
-  availability: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // =========================

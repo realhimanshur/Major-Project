@@ -16,18 +16,51 @@ exports.createVenue = async (req, res) => {
       category,
     } = req.body;
 
+    // ✅ LOCATION NORMALIZATION
+    let normalizedLocation = { city: "", state: "" };
+
+    if (typeof location === "object") {
+      normalizedLocation = {
+        city: location.city || "",
+        state: location.state || "",
+      };
+    } else if (typeof location === "string") {
+      normalizedLocation = {
+        city: location,
+        state: "",
+      };
+    }
+
+    // ✅ CAPACITY NORMALIZATION
+    let normalizedCapacity = { min: 0, max: 0 };
+
+    if (typeof capacity === "object") {
+      normalizedCapacity = {
+        min: capacity.min || 0,
+        max: capacity.max || capacity.min || 0,
+      };
+    } else if (typeof capacity === "number") {
+      normalizedCapacity = {
+        min: capacity,
+        max: capacity,
+      };
+    }
+
+    // ✅ PRICE NORMALIZATION
+    const normalizedPrice =
+      typeof pricePerHour === "number"
+        ? pricePerHour
+        : typeof price === "number"
+        ? price
+        : 0;
+
     const venue = new Venue({
       name,
       description,
-      location,
-
-      // ✅ FIX: support both
-      price: price || pricePerHour || 0,
-
-      capacity,
+      location: normalizedLocation,
+      capacity: normalizedCapacity,
+      pricePerHour: normalizedPrice,
       category,
-
-      // ✅ FIX: normalize images
       images: images || (image ? [image] : []),
     });
 
@@ -69,7 +102,9 @@ exports.getVenues = async (req, res) => {
 // ✅ GET SINGLE VENUE
 exports.getVenueById = async (req, res) => {
   try {
-    const venue = await Venue.findById(req.params.id);
+    const { id } = req.params;
+
+    const venue = await Venue.findById(id);
 
     if (!venue) {
       return res.status(404).json({

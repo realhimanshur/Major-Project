@@ -10,41 +10,31 @@ interface VenueCardProps {
   variant?: "default" | "compact";
 }
 
-type ExtendedVenue = Venue & {
-  _id?: string;
-  image?: string;
-  location?: string | { city?: string; state?: string };
-  reviewCount?: number;
-  reviewsCount?: number;
-  contactInfo?: { phone?: string };
-};
-
 const VenueCard: React.FC<VenueCardProps> = ({
   venue,
   variant = "default",
 }) => {
   const navigate = useNavigate();
 
-  const v = venue as ExtendedVenue;
+  const locationValue =
+    venue.location?.city || venue.location?.state
+      ? `${venue.location?.city || ""}, ${venue.location?.state || ""}`
+      : "Location not available";
 
-  // ✅ FIXED (NO never, NO any)
-  const locationObj =
-  typeof v.location === "object" && v.location !== null
-    ? (v.location as { city?: string; state?: string })
-    : null;
+  const capacityValue =
+    typeof venue.capacity?.max === "number"
+      ? venue.capacity.max
+      : "--";
 
-  const locationValue: string =
-    typeof v.location === "string"
-      ? v.location
-      : `${locationObj?.city || ""}, ${locationObj?.state || ""}`;
+  const priceValue =
+    typeof venue.pricePerHour === "number"
+      ? venue.pricePerHour
+      : 0;
 
   const adaptedVenue = {
     ...venue,
-    id: v._id || venue.id,
-    images: venue.images?.length ? venue.images : [v.image || ""],
-    location: locationValue,
-    reviewCount: v.reviewCount || v.reviewsCount || 0,
-    contactInfo: v.contactInfo || { phone: "" },
+    id: venue._id || venue.id,
+    images: venue.images?.length ? venue.images : [""],
   };
 
   // 🔹 COMPACT
@@ -63,7 +53,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
 
           <div className="absolute top-3 right-3">
             <Badge className="bg-[#633dc0]/80 text-white border-0">
-              ₹{adaptedVenue.pricePerHour}/hr
+              ₹{priceValue}/hr
             </Badge>
           </div>
         </div>
@@ -75,7 +65,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
 
           <div className="flex items-center gap-1 text-white/50 text-sm mb-2">
             <MapPin className="w-3 h-3" />
-            {adaptedVenue.location}
+            {locationValue}
           </div>
 
           <div className="flex items-center justify-between">
@@ -88,7 +78,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
 
             <span className="text-white/50 text-sm flex items-center gap-1">
               <Users className="w-3 h-3" />
-              {adaptedVenue.capacity?.max}
+              {capacityValue}
             </span>
           </div>
         </div>
@@ -117,7 +107,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
 
         <div className="absolute top-3 right-3">
           <Badge className="bg-purple-600 text-white border-0">
-            ₹{adaptedVenue.pricePerHour}/hr
+            ₹{priceValue}/hr
           </Badge>
         </div>
       </div>
@@ -134,12 +124,12 @@ const VenueCard: React.FC<VenueCardProps> = ({
         <div className="flex items-center gap-4 text-sm mb-4">
           <span className="text-white/60 flex items-center gap-1">
             <MapPin className="w-4 h-4" />
-            {adaptedVenue.location}
+            {locationValue}
           </span>
 
           <span className="text-white/60 flex items-center gap-1">
             <Users className="w-4 h-4" />
-            {adaptedVenue.capacity?.min}-{adaptedVenue.capacity?.max}
+            {capacityValue}
           </span>
         </div>
 
