@@ -7,10 +7,12 @@ const {
   getFavorites,
 } = require("../controllers/favoriteController");
 
-// ✅ TOGGLE FAVORITE (ADD / REMOVE)
-router.post("/:eventId", protect, toggleFavorite);
+// ✅ TOGGLE FAVORITE (EVENT + VENUE)
+// /api/favorites/event/:id
+// /api/favorites/venue/:id
+router.post("/:type/:id", protect, toggleFavorite);
 
-// ✅ GET ALL FAVORITES (USER)
+// ✅ GET ALL FAVORITES
 router.get("/", protect, getFavorites);
 
 module.exports = router;

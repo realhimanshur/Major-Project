@@ -112,7 +112,7 @@ const VenueDetail: React.FC = () => {
 
       if (!id) return;
 
-      await toggleFavorite(id);
+      await toggleFavorite(id,"venue");
       setIsFav((prev) => !prev);
     } catch (error) {
       console.error(error);

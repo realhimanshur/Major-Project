@@ -110,7 +110,7 @@ const EventDetail: React.FC = () => {
 
       if (!id) return;
 
-      await toggleFavorite(id);
+      await toggleFavorite(id, "event");
 
       setIsFav((prev) => !prev);
     } catch (error) {

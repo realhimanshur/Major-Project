@@ -4,7 +4,10 @@ import axios, { AxiosError } from "axios";
 const API_URL = "http://localhost:5000/api/bookings";
 const FAV_API_URL = "http://localhost:5000/api/favorites";
 
+// =======================
 // ✅ TYPES
+// =======================
+
 interface BookingResponse {
   message: string;
   booking: unknown;
@@ -20,14 +23,18 @@ interface RazorpayKeyResponse {
   key: string;
 }
 
-// ✅ EVENT TYPE (for favorites)
-export interface EventType {
+// ✅ COMMON FAVORITE TYPE (EVENT + VENUE)
+export type FavoriteType = "event" | "venue";
+
+export interface FavoriteItem {
   _id: string;
-  title: string;
-  location: string;
+  title?: string;        // event
+  name?: string;         // venue
+  location?: string;
   price?: number;
   image?: string;
-  date?: string;
+  images?: string[];
+  type: FavoriteType;
 }
 
 // =======================
@@ -92,12 +99,12 @@ export const getRazorpayKey = async (): Promise<string> => {
 // ❤️ FAVORITE APIs
 // =======================
 
-// GET USER FAVORITES
-export const getFavorites = async (): Promise<EventType[]> => {
+// ✅ GET FAVORITES (EVENT + VENUE)
+export const getFavorites = async (): Promise<FavoriteItem[]> => {
   try {
     const token = localStorage.getItem("token");
 
-    const res = await axios.get<EventType[]>(FAV_API_URL, {
+    const res = await axios.get<FavoriteItem[]>(FAV_API_URL, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -114,15 +121,16 @@ export const getFavorites = async (): Promise<EventType[]> => {
   }
 };
 
-// TOGGLE FAVORITE (ADD / REMOVE)
+// ✅ TOGGLE FAVORITE (EVENT + VENUE)
 export const toggleFavorite = async (
-  eventId: string
-): Promise<string[]> => {
+  id: string,
+  type: FavoriteType
+): Promise<void> => {
   try {
     const token = localStorage.getItem("token");
 
-    const res = await axios.post<{ favorites: string[] }>(
-      `${FAV_API_URL}/${eventId}`,
+    await axios.post(
+      `${FAV_API_URL}/${type}/${id}`,
       {},
       {
         headers: {
@@ -130,8 +138,6 @@ export const toggleFavorite = async (
         },
       }
     );
-
-    return res.data.favorites;
   } catch (error) {
     const err = error as AxiosError<{ message?: string }>;
     console.error(
