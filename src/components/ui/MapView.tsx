@@ -13,10 +13,12 @@ const MapView: React.FC<MapViewProps> = ({ location }) => {
     lon: number;
   } | null>(null);
 
+  const query = `${location.city} ${location.state}`.trim();
+
   useEffect(() => {
     const fetchCoordinates = async () => {
       try {
-        const query = `${location.city}, ${location.state}`;
+        if (!query) return;
 
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -37,10 +39,16 @@ const MapView: React.FC<MapViewProps> = ({ location }) => {
       }
     };
 
-    if (location.city || location.state) {
-      fetchCoordinates();
-    }
-  }, [location]);
+    fetchCoordinates();
+  }, [query]);
+
+  // 🔗 GOOGLE MAPS LINK
+  const openInGoogleMaps = () => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      query
+    )}`;
+    window.open(url, "_blank");
+  };
 
   if (!coords) {
     return (
@@ -51,17 +59,31 @@ const MapView: React.FC<MapViewProps> = ({ location }) => {
   }
 
   return (
-    <div className="w-full h-[300px] rounded-xl overflow-hidden">
-      <iframe
-        title="map"
-        width="100%"
-        height="100%"
-        style={{ border: 0 }}
-        loading="lazy"
-        src={`https://www.openstreetmap.org/export/embed.html?bbox=${coords.lon -
-          0.01},${coords.lat - 0.01},${coords.lon + 0.01},${coords.lat +
-          0.01}&layer=mapnik&marker=${coords.lat},${coords.lon}`}
-      />
+    <div className="space-y-3">
+      {/* 🗺 MAP (CLICKABLE) */}
+      <div
+        className="w-full h-[300px] rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition"
+        onClick={openInGoogleMaps}
+      >
+        <iframe
+          title="map"
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          loading="lazy"
+          src={`https://www.openstreetmap.org/export/embed.html?bbox=${coords.lon -
+            0.01},${coords.lat - 0.01},${coords.lon + 0.01},${coords.lat +
+            0.01}&layer=mapnik&marker=${coords.lat},${coords.lon}`}
+        />
+      </div>
+
+      {/* 📍 BUTTON */}
+      <button
+        onClick={openInGoogleMaps}
+        className="w-full bg-white/10 hover:bg-white/20 text-white text-sm py-2 rounded-lg transition"
+      >
+        Open in Google Maps 📍
+      </button>
     </div>
   );
 };
