@@ -1,30 +1,50 @@
 const express = require("express");
 const router = express.Router();
-const { getRazorpayKey } = require("../controllers/bookingController");
+
 const bookingController = require("../controllers/bookingController");
+// const { getRazorpayKey } = bookingController;
 
-// ✅ ADD THIS FIRST (VERY IMPORTANT)
-router.get("/my-bookings", async (req, res) => {
-  try {
-    const bookings = await require("../models/Booking")
-      .find()
-      .populate("organizer", "name image location")
-      .sort({ createdAt: -1 });
+// 🔥 NEW: GET MY BOOKINGS (USER SPECIFIC)
+router.get("/my", bookingController.getMyBookings);
 
-    res.json(bookings);
-  } catch (error) {
-    console.error("Get My Bookings Error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+// 🔥 NEW: GET AVAILABLE SLOTS
+router.get("/slots", bookingController.getAvailableSlots);
 
-// ✅ EXISTING ROUTES
+// ===============================
+// 📊 ANALYTICS ROUTES (ADDED)
+// ===============================
+
+// Dashboard Summary
+router.get("/analytics/summary", bookingController.getDashboardSummary);
+
+// Revenue Trend
+router.get("/analytics/revenue-trend", bookingController.getRevenueTrend);
+
+// Ticket Distribution
+router.get(
+  "/analytics/ticket-distribution",
+  bookingController.getTicketDistribution
+);
+
+// Attendee Insights
+router.get(
+  "/analytics/attendee-insights",
+  bookingController.getAttendeeInsights
+);
+
+// ===============================
+// ✅ EXISTING ROUTES (UNCHANGED)
+// ===============================
+
 router.post("/", bookingController.createBooking);
 router.get("/", bookingController.getBookings);
-router.get("/razorpay-key", getRazorpayKey);
-router.get("/:id", bookingController.getBookingById);
-router.put("/:id/payment", bookingController.updatePaymentStatus);
+router.get("/razorpay-key", bookingController.getRazorpayKey);
+
 router.post("/create-order", bookingController.createPaymentOrder);
 router.post("/verify-payment", bookingController.verifyPayment);
+
+// ⚠️ KEEP THIS LAST (VERY IMPORTANT)
+router.get("/:id", bookingController.getBookingById);
+router.put("/:id/payment", bookingController.updatePaymentStatus);
 
 module.exports = router;

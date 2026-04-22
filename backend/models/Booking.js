@@ -12,10 +12,23 @@ const bookingSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: false, // optional for now
+      required: false,
     },
 
-    // 👤 USER DETAILS (for form)
+    // 🆕 EVENT (ADDED)
+    event: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+    },
+
+    // 🏟️ VENUE
+    venue: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Venue",
+      required: false,
+    },
+
+    // 👤 USER DETAILS
     name: {
       type: String,
       required: true,
@@ -52,8 +65,36 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
 
+    // 💰 ACTUAL PAYMENT (NEW)
+    amount: {
+      type: Number,
+      required: true,
+    },
+
     notes: {
       type: String,
+    },
+
+    // ⏰ SLOT BOOKING
+    startTime: {
+      type: String,
+    },
+
+    endTime: {
+      type: String,
+    },
+
+    // 🎟️ TICKET TYPE (NEW)
+    ticketType: {
+      type: String,
+      enum: ["VIP", "General", "Early Bird"],
+      default: "General",
+    },
+
+    // 👥 CHECK-IN (NEW)
+    checkInStatus: {
+      type: Boolean,
+      default: false,
     },
 
     // 💳 PAYMENT
@@ -62,13 +103,18 @@ const bookingSchema = new mongoose.Schema(
       enum: ["pending", "paid"],
       default: "pending",
     },
+
     paymentId: String,
+
     status: {
       type: String,
       default: "pending",
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
+
+// ⚡ INDEX FOR ANALYTICS
+bookingSchema.index({ organizer: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Booking", bookingSchema);
