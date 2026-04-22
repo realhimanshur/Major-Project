@@ -9,7 +9,28 @@ import { useAuth } from "@/context/AuthContext";
 import { getFavorites } from "@/services/bookingService";
 import type { FavoriteItem } from "@/services/bookingService";
 
-// ✅ BOOKING TYPE
+/* ---------------- SAFE LOCATION HANDLER ---------------- */
+const getLocationString = (loc: unknown): string => {
+  if (!loc) return "Location not available";
+
+  if (typeof loc === "string") return loc;
+
+  if (typeof loc === "object") {
+    const l = loc as {
+      city?: string;
+      state?: string;
+      country?: string;
+    };
+
+    return [l.city, l.state, l.country]
+      .filter(Boolean)
+      .join(", ") || "Location not available";
+  }
+
+  return "Location not available";
+};
+
+/* ---------------- BOOKING TYPE ---------------- */
 interface BookingType {
   _id: string;
   tickets: number;
@@ -25,10 +46,8 @@ const AttendeeDashboard: React.FC = () => {
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState("bookings");
-
   const [bookings, setBookings] = useState<BookingType[]>([]);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-
   const [loading, setLoading] = useState(true);
 
   /* ---------------- FETCH BOOKINGS ---------------- */
@@ -45,8 +64,20 @@ const AttendeeDashboard: React.FC = () => {
         },
       );
 
-      const data: BookingType[] = await res.json();
-      setBookings(data);
+      if (!res.ok) {
+        console.error("API Error:", res.status);
+        setBookings([]);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        setBookings(data);
+      } else {
+        console.error("Invalid bookings response:", data);
+        setBookings([]);
+      }
     } catch (error) {
       console.error("Error fetching bookings:", error);
     } finally {
@@ -70,8 +101,13 @@ const AttendeeDashboard: React.FC = () => {
   }, []);
 
   /* ---------------- FORMAT DATE ---------------- */
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
+  const formatDate = (date?: string) => {
+    if (!date) return "N/A";
+
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "Invalid Date";
+
+    return d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -83,25 +119,31 @@ const AttendeeDashboard: React.FC = () => {
   const eventFavorites = favorites.filter((f) => f.type === "event");
 
   /* ---------------- UPCOMING COUNT ---------------- */
-  const upcomingCount = bookings.filter(
-    (b) => new Date(b.eventId?.startDate) > new Date(),
-  ).length;
+  const upcomingCount = bookings.filter((b) => {
+    if (!b.eventId || !b.eventId.startDate) return false;
+
+    const eventDate = new Date(b.eventId.startDate);
+    return !isNaN(eventDate.getTime()) && eventDate > new Date();
+  }).length;
 
   return (
     <div className="min-h-screen bg-[#161616] pt-24 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         {/* HEADER */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
+
+            {/* AVATAR FIXED */}
             <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center">
               <span className="text-2xl font-bold text-white">
-                {user?.name?.charAt(0)}
+                {user?.name?.charAt(0) || "U"}
               </span>
             </div>
 
             <div>
               <h1 className="text-2xl font-bold text-white">
-                Welcome back, {user?.name?.split(" ")[0]}!
+                Welcome back, {user?.name?.split(" ")[0] || "User"}!
               </h1>
               <p className="text-white/60">Attendee Dashboard</p>
             </div>
@@ -110,6 +152,7 @@ const AttendeeDashboard: React.FC = () => {
 
         {/* STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+
           <div className="glass-card rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-[#633dc0]/20 flex items-center justify-center">
@@ -132,15 +175,18 @@ const AttendeeDashboard: React.FC = () => {
               </div>
 
               <div>
-                <p className="text-2xl font-bold text-white">{upcomingCount}</p>
+                <p className="text-2xl font-bold text-white">
+                  {upcomingCount}
+                </p>
                 <p className="text-white/50 text-sm">Upcoming</p>
               </div>
             </div>
           </div>
 
-          {/* ✅ FAVORITES COUNT */}
           <div className="glass-card rounded-xl p-4">
-            <p className="text-2xl font-bold text-white">{favorites.length}</p>
+            <p className="text-2xl font-bold text-white">
+              {favorites.length}
+            </p>
             <p className="text-white/50 text-sm">Favorites</p>
           </div>
 
@@ -148,17 +194,19 @@ const AttendeeDashboard: React.FC = () => {
             <p className="text-2xl font-bold text-white">0</p>
             <p className="text-white/50 text-sm">Reviews</p>
           </div>
+
         </div>
 
         {/* TABS */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
+
           <TabsList className="bg-white/5 border-b border-white/10 mb-6">
             <TabsTrigger value="bookings">My Bookings</TabsTrigger>
             <TabsTrigger value="favorites">Favorites</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
-          {/* BOOKINGS TAB (UNCHANGED) */}
+          {/* BOOKINGS */}
           <TabsContent value="bookings">
             {loading ? (
               <div className="text-white/60">Loading bookings...</div>
@@ -187,21 +235,14 @@ const AttendeeDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          navigate(`/events/${booking.eventId?._id}`)
-                        }
-                      >
-                        View Event
-                      </Button>
-
-                      <Button size="sm" className="btn-primary">
-                        View Ticket
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        navigate(`/events/${booking.eventId?._id}`)
+                      }
+                    >
+                      View Event
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -210,23 +251,24 @@ const AttendeeDashboard: React.FC = () => {
             )}
           </TabsContent>
 
-          {/* ❤️ FAVORITES TAB */}
+          {/* FAVORITES */}
           <TabsContent value="favorites">
-            {/* 🔹 VENUES */}
+
+            {/* VENUES */}
             <h2 className="text-lg font-semibold text-white mb-3">Venues</h2>
             {venueFavorites.length > 0 ? (
               <div className="space-y-4 mb-6">
                 {venueFavorites.map((v) => (
-                  <div
-                    key={v._id}
-                    className="glass-card rounded-xl p-6 flex flex-col md:flex-row gap-6"
-                  >
+                  <div key={v._id} className="glass-card rounded-xl p-6 flex flex-col md:flex-row gap-6">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-white mb-2">
                         {v.name}
                       </h3>
 
-                      <p className="text-white/60">{v.location}</p>
+                      {/* ✅ FIXED */}
+                      <p className="text-white/60">
+                        {getLocationString(v.location)}
+                      </p>
                     </div>
 
                     <Button
@@ -242,23 +284,25 @@ const AttendeeDashboard: React.FC = () => {
               <p className="text-white/40 mb-6">No favorite venues</p>
             )}
 
-            {/* 🔹 EVENTS */}
+            {/* EVENTS */}
             <h2 className="text-lg font-semibold text-white mb-3">Events</h2>
             {eventFavorites.length > 0 ? (
               <div className="space-y-4">
                 {eventFavorites.map((event) => (
-                  <div
-                    key={event._id}
-                    className="glass-card rounded-xl p-6 flex flex-col md:flex-row gap-6"
-                  >
+                  <div key={event._id} className="glass-card rounded-xl p-6 flex flex-col md:flex-row gap-6">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-white mb-2">
                         {event.title}
                       </h3>
 
-                      <p className="text-white/60 mb-2">{event.location}</p>
+                      {/* ✅ FIXED */}
+                      <p className="text-white/60 mb-2">
+                        {getLocationString(event.location)}
+                      </p>
 
-                      <p className="text-white/70">₹{event.price ?? "N/A"}</p>
+                      <p className="text-white/70">
+                        ₹{event.price ?? "N/A"}
+                      </p>
                     </div>
 
                     <Button
@@ -276,7 +320,9 @@ const AttendeeDashboard: React.FC = () => {
                 No favorite events
               </div>
             )}
+
           </TabsContent>
+
         </Tabs>
       </div>
     </div>

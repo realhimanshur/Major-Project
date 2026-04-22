@@ -4,6 +4,18 @@ import { useAIChat } from "@/context/AIChatContext";
 import { TypingIndicator } from "./TypingIndicator";
 import { MessageBubble } from "./MessageBubble";
 
+// ✅ Language Type (NO ANY)
+type LanguageOption = {
+  code: string;
+  label: string;
+};
+
+const LANGUAGES: LanguageOption[] = [
+  { code: "en-US", label: "English" },
+  { code: "hi-IN", label: "Hindi" },
+  { code: "en-IN", label: "Hinglish" },
+];
+
 const ChatWindow: React.FC = () => {
   const { messages, isLoading, error, sendMessage, closeChat, clearChat } =
     useAIChat();
@@ -11,6 +23,11 @@ const ChatWindow: React.FC = () => {
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+
+  // ✅ Language State
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
+    return localStorage.getItem("chat-lang") || "en-US";
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -22,7 +39,12 @@ const ChatWindow: React.FC = () => {
 
   useEffect(scrollToBottom, [messages, isLoading]);
 
-  // 🎤 Voice Input Setup
+  // ✅ Save Language
+  useEffect(() => {
+    localStorage.setItem("chat-lang", selectedLanguage);
+  }, [selectedLanguage]);
+
+  // 🎤 Voice Input Setup (MULTI LANGUAGE)
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -30,37 +52,39 @@ const ChatWindow: React.FC = () => {
     if (SpeechRecognition) {
       const recognition: SpeechRecognition = new SpeechRecognition();
 
+      recognition.lang = selectedLanguage; // ✅ key change
+
       recognition.onresult = (e: SpeechRecognitionEvent) => {
         setInput(e.results[0][0].transcript);
         setIsListening(false);
       };
 
       recognition.onend = () => setIsListening(false);
+
       recognitionRef.current = recognition;
     }
-  }, []);
+  }, [selectedLanguage]);
 
-  // 🔊 Text-to-Speech Function
+  // 🔊 Text-to-Speech (MULTI LANGUAGE)
   const handleSpeak = (text: string, index: number) => {
     if (!window.speechSynthesis) {
       alert("Text-to-speech not supported");
       return;
     }
 
-    // Stop if same message clicked again
     if (speakingIndex === index) {
       window.speechSynthesis.cancel();
       setSpeakingIndex(null);
       return;
     }
 
-    // Stop any current speech
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
+
+    utterance.lang = selectedLanguage; // ✅ key change
     utterance.rate = 1;
     utterance.pitch = 1;
-    utterance.lang = "en-US";
 
     utterance.onend = () => setSpeakingIndex(null);
 
@@ -86,6 +110,7 @@ const ChatWindow: React.FC = () => {
     setInput("");
 
     try {
+      // ⚠️ Language will be injected later in context
       await sendMessage(msg);
     } finally {
       isSendingRef.current = false;
@@ -119,7 +144,22 @@ const ChatWindow: React.FC = () => {
       
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-4 text-white flex justify-between items-center shadow-md">
+        
         <span className="font-semibold tracking-wide">AI Assistant</span>
+
+        {/* ✅ Language Dropdown */}
+        <select
+          value={selectedLanguage}
+          onChange={(e) => setSelectedLanguage(e.target.value)}
+          className="bg-white/20 text-white text-xs px-2 py-1 rounded-md outline-none"
+        >
+          {LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code} className="text-black">
+              {lang.label}
+            </option>
+          ))}
+        </select>
+
         <button onClick={closeChat} className="hover:scale-110 transition">
           <X />
         </button>

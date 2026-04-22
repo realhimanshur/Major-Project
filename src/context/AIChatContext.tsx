@@ -27,12 +27,25 @@ export const AIChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ TRACK USER CHANGE (NEW)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const openChat = () => setIsOpen(true);
   const closeChat = () => setIsOpen(false);
   const toggleChat = () => setIsOpen(prev => !prev);
+
+  // ✅ Language Helper (NEW)
+  const getLanguageInstruction = () => {
+    const lang = localStorage.getItem("chat-lang") || "en-US";
+
+    switch (lang) {
+      case "hi-IN":
+        return "Respond in Hindi.";
+      case "en-IN":
+        return "Respond in Hinglish (mix of Hindi and English).";
+      default:
+        return "Respond in English.";
+    }
+  };
 
   // ✨ Typing Effect (unchanged)
   const simulateTyping = async (fullText: string, timestamp: string) => {
@@ -78,48 +91,77 @@ export const AIChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      const response = await aiAgentService.sendMessage(content);
+      // ✅ Inject Language Instruction
+      const enhancedPrompt = `${getLanguageInstruction()} \nUser: ${content}`;
+
+      const response = await aiAgentService.sendMessage(enhancedPrompt);
 
       await simulateTyping(response.response, response.timestamp);
 
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to send message";
-      setError(errorMsg);
+    } catch  {
+      const getErrorMessage = () => {
+  const lang = localStorage.getItem("chat-lang") || "en-US";
+
+  switch (lang) {
+    case "hi-IN":
+      return "कुछ समस्या आ गई है, कृपया बाद में प्रयास करें";
+    case "en-IN":
+      return "Kuch problem aa gayi hai, baad mein try karo";
+    default:
+      return "I'm having trouble right now. Please try again later.";
+  }
+};
+
+const msg = getErrorMessage();
+  console.log("ERROR MSG:", msg);
+
+
+const errorMsg = getErrorMessage();
+
+setError(errorMsg);
+
+// 👇 ADD THIS (VERY IMPORTANT)
+setMessages(prev => [
+  ...prev,
+  {
+    role: "assistant",
+    content: errorMsg,
+    timestamp: new Date().toISOString(),
+  },
+]);
+
       setMessages(prev => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   }, [isLoading, user]);
 
-  // ✅ LOAD USER-SPECIFIC HISTORY
   const loadHistory = useCallback(async () => {
     if (!user) return;
 
     try {
       const history = await aiAgentService.getHistory(user.id);
-      setMessages(history || []); // ✅ safe fallback
+      setMessages(history || []);
     } catch (err) {
       console.error(err);
-      setMessages([]); // ✅ prevent stale data
+      setMessages([]);
     }
   }, [user]);
 
-  // ✅ FIX: HANDLE USER SWITCH PROPERLY (MAIN FIX 🔥)
   useEffect(() => {
     if (!user) {
       setMessages([]);
       setCurrentUserId(null);
-      aiAgentService.resetSession(); // ✅ reset backend session
+      aiAgentService.resetSession();
       return;
     }
 
-    // 👉 If new user logged in
     if (currentUserId !== user.id) {
       aiAgentService.setUser(user.id);
-      setMessages([]); // clear old user messages
-      aiAgentService.resetSession(); // reset AI memory/session
+      setMessages([]);
+      aiAgentService.resetSession();
       setCurrentUserId(user.id);
-      loadHistory(); // load new user's chat
+      loadHistory();
     }
   }, [user, currentUserId, loadHistory]);
 
